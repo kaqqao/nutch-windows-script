@@ -1,4 +1,5 @@
 @echo off
+setlocal
     
 if "%1"=="" (
   echo Usage: nutch COMMAND
@@ -34,7 +35,7 @@ if "%1"=="" (
   echo  or
   echo   CLASSNAME         run the class named CLASSNAME
   echo Most commands print help when invoked w/o parameters.
-  exit /B
+  exit /B 1
 )
 
 rem Check JAVA_HOME
@@ -56,13 +57,23 @@ rem Check local or deployed execution
 SET NUTCH_JOB=
 for %%i in ("%NUTCH_HOME%\*nutch*.job") do set NUTCH_JOB=%%i
 
+rem check that hadoop can be found on the path 
+if defined NUTCH_JOB (
+	rem Set errorlevel here because of variable expansion happens before block execution
+	WHERE hadoop.cmd >nul 2>&1
+	IF %ERRORLEVEL% NEQ 0 (
+		echo Can't find Hadoop executable. Add HADOOP_HOME/bin to the path or run in local mode.
+		exit /B 1
+	)
+)
+
 rem Set default paths and options
 set CLASSPATH="%NUTCH_HOME%\conf";"%JAVA_HOME%\lib\tools.jar"
 
 set NUTCH_LOG_DIR="%NUTCH_HOME%\logs"
 set NUTCH_LOGFILE=hadoop.log
 
-set NUTCH_OPTS=-Dhadoop.log.dir=%NUTCH_LOG_DIR% -Dhadoop.log.file=%NUTCH_LOGFILE%
+set NUTCH_OPTS=%NUTCH_OPTS% -Dhadoop.log.dir=%NUTCH_LOG_DIR% -Dhadoop.log.file=%NUTCH_LOGFILE%
 rem -Xdebug -Xrunjdwp:transport=dt_socket,address=1317,suspend=n,server=y
 set NUTCH_OPTS=-Xmx1000m -Djavax.xml.parsers.DocumentBuilderFactory=com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl %NUTCH_OPTS%
 echo Using Nutch opts: %NUTCH_OPTS%
@@ -70,9 +81,12 @@ echo Using Nutch opts: %NUTCH_OPTS%
 rem Add everything from lib to classpath
 set CLASSPATH=%CLASSPATH%;"%NUTCH_HOME%\lib\*"
 
+rem Add hadoop utils for outlinkmeta plugin for the reduce step
+set CLASSPATH=%CLASSPATH%;
+
 rem Determine the Java class to trigger
 if "%1" == "crawl" (
-    echo "Command %1 is deprecated, please use bin/crawl instead"
+    echo Command %1 is deprecated, please use bin/crawl instead
     exit /B 1
 ) else if "%1" == "inject" (
     set CLASS=org.apache.nutch.crawl.Injector
@@ -106,7 +120,7 @@ if "%1" == "crawl" (
 ) else if "%1" == "index" (
     set CLASS=org.apache.nutch.indexer.IndexingJob
 ) else if "%1" == "solrdedup" (
-    echo "Command %1 is deprecated, please use dedup instead"
+    echo Command %1 is deprecated, please use dedup instead
     exit /B 1
 ) else if "%1" == "dedup" (
     set CLASS=org.apache.nutch.crawl.DeduplicationJob
@@ -143,21 +157,20 @@ rem Calculate the command line parameters to forward to Java
 set PARAMS=
 shift
 :loop
-if "%1"=="" goto after_loop
-set PARAMS=%PARAMS% %1
+if "%~1"=="" goto after_loop
+rem Parameters are split on spaces *and* equal signs expect if contained in double quotes.
+rem Remove the double quotes from parameters that do not contain spaces.
+rem This is important for the crawl script where the solr url is given as -D solr.server.url=http://example.org
+rem an must be quoted as -D "solr.server.url=http://example.org" or "-Dsolr.server.url=http://example.org" (without space).
+for /F "tokens=1*" %%i in ("%~1") do set SPACE=%%j
+if defined SPACE (set PARAMS=%PARAMS% %1) else (set PARAMS=%PARAMS% %~1)
 shift
 goto loop
-
 :after_loop
-rem Set errorlevel here because of variable expansion happens before block execution
-WHERE hadoop.cmd >nul 2>&1
-if "%NUTCH_JOB%"=="" ( 
-    SET EXEC_CALL=java %NUTCH_OPTS% -classpath %CLASSPATH%
-) else (
-    IF %ERRORLEVEL% NEQ 0 (
-        echo Can't find Hadoop executable. Add HADOOP_HOME/bin to the path or run in local mode.
-        exit /B 1
-    )
+
+if DEFINED NUTCH_JOB ( 
     SET EXEC_CALL=hadoop jar %NUTCH_JOB%
+) else (
+    SET EXEC_CALL=java %NUTCH_OPTS% -classpath %CLASSPATH%
 )
 call %EXEC_CALL% %CLASS% %PARAMS%
