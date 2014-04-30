@@ -100,7 +100,7 @@ if defined NUTCH_JOB (
 
 rem initial injection
 SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-rem call %bin%nutch.bat inject "%CRAWL_PATH%/crawldb" "%SEEDDIR%"
+call %bin%nutch.bat inject "%CRAWL_PATH%/crawldb" "%SEEDDIR%"
 
 if %ERRORLEVEL% NEQ 0 (
 	exit /B %ERRORLEVEL% 
@@ -119,7 +119,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 
 	echo Generating a new segment
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions%
-	rem call %bin%nutch.bat generate "%CRAWL_PATH%/crawldb" "%CRAWL_PATH%/segments" -topN %sizeFetchlist% -numFetchers %numSlaves% -noFilter
+	call %bin%nutch.bat generate "%CRAWL_PATH%/crawldb" "%CRAWL_PATH%/segments" -topN %sizeFetchlist% -numFetchers %numSlaves% -noFilter
   
 	if %ERRORLEVEL% NEQ 0 (
 		exit /B %ERRORLEVEL% 
@@ -129,6 +129,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	rem call hadoop in distributed mode
 	rem or use ls
 
+	
 	SET SEGMENT=
 
 	if not defined NUTCH_JOB (
@@ -150,9 +151,14 @@ for /L %%i IN (1,1,%LIMIT%) do (
 			)
 		)
 	)
-
+	
+	if "!PREVIOUS_SEGMENT!"=="!SEGMENT!" (
+		echo No new segment generated - finished
+		goto break
+	)
+	
 	echo Operating on segment : !SEGMENT!
-goto break
+
 	rem fetching the segment
 	echo Fetching : !SEGMENT!
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions% -Dfetcher.timelimit.mins=%timeLimitFetch%
@@ -201,34 +207,34 @@ goto break
 	)
 
 	rem echo Indexing !SEGMENT! on SOLR index -^> %SOLRURL%
-	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV% -Dsolr.server.url=%SOLRURL%
-	rem %bin%nutch index "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
+	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
+	rem %bin%nutch index "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
 	
 	echo Sending !SEGMENT! to EUCases web service -^> %SOLRURL%
-	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% -Deucasesindexer.serviceUrl=%SOLRURL%
-	call %bin%nutch index "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
+	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
+	call %bin%nutch index "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
   
 	if %ERRORLEVEL% NEQ 0 (
 		exit /B %ERRORLEVEL% 
 	)
 
 	rem echo Cleanup on SOLR index -^> %SOLRURL%
-	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV% -Dsolr.server.url=%SOLRURL%
-	rem call %bin%nutch clean "%CRAWL_PATH%/crawldb"
+	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
+	rem call %bin%nutch clean "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb"
 	
 	echo Cleanup on EUCases web service -^> %SOLRURL%
-	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% -Deucasesindexer.serviceUrl=%SOLRURL%
-	call %bin%nutch clean "%CRAWL_PATH%/crawldb"
+	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
+	call %bin%nutch clean "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb"
   
 	if %ERRORLEVEL% NEQ 0 (
 		exit /B %ERRORLEVEL% 
 	)
 
+	SET PREVIOUS_SEGMENT=!SEGMENT!
 )
 endlocal
 
 :break
-	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-	call "%bin%nutch" index "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
 
+endlocal
 exit /B 0
