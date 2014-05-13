@@ -103,7 +103,8 @@ SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 call %bin%nutch.bat inject "%CRAWL_PATH%/crawldb" "%SEEDDIR%"
 
 if %ERRORLEVEL% NEQ 0 (
-	exit /B %ERRORLEVEL% 
+	echo Errorlevel from previous command is %ERRORLEVEL% - crawling stopped.
+	exit /B %ERRORLEVEL%
 )
 
 rem main loop : rounds of generate - fetch - parse - update
@@ -121,8 +122,9 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions%
 	call %bin%nutch.bat generate "%CRAWL_PATH%/crawldb" "%CRAWL_PATH%/segments" -topN %sizeFetchlist% -numFetchers %numSlaves% -noFilter
   
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem capture the name of the segment
@@ -152,11 +154,6 @@ for /L %%i IN (1,1,%LIMIT%) do (
 		)
 	)
 	
-	if "!PREVIOUS_SEGMENT!"=="!SEGMENT!" (
-		echo No new segment generated - finished
-		goto break
-	)
-	
 	echo Operating on segment : !SEGMENT!
 
 	rem fetching the segment
@@ -164,8 +161,9 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions% -Dfetcher.timelimit.mins=%timeLimitFetch%
 	call %bin%nutch fetch "%CRAWL_PATH%/segments/!SEGMENT!" -noParsing -threads %numThreads%
 
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem parsing the segment
@@ -175,8 +173,9 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions% -Dmapred.skip.attempts.to.start.skipping=2 -Dmapred.skip.map.max.skip.records=1
 	call %bin%nutch parse "%CRAWL_PATH%/segments/!SEGMENT!"
 
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem updatedb with this segment
@@ -184,8 +183,9 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions%
 	call %bin%nutch updatedb "%CRAWL_PATH%/crawldb"  "%CRAWL_PATH%/segments/!SEGMENT!"
 
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem note that the link inversion - indexing routine can be done within the main loop 
@@ -194,16 +194,18 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch invertlinks "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
 
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	echo Dedup on crawldb
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch dedup "%CRAWL_PATH%/crawldb"
   
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem echo Indexing !SEGMENT! on SOLR index -^> %SOLRURL%
@@ -214,8 +216,9 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch index "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
   
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
 	rem echo Cleanup on SOLR index -^> %SOLRURL%
@@ -226,11 +229,11 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch clean "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb"
   
-	if %ERRORLEVEL% NEQ 0 (
-		exit /B %ERRORLEVEL% 
+	if !ERRORLEVEL! NEQ 0 (
+		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
+		exit /B !ERRORLEVEL!
 	)
 
-	SET PREVIOUS_SEGMENT=!SEGMENT!
 )
 endlocal
 
