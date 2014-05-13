@@ -208,26 +208,18 @@ for /L %%i IN (1,1,%LIMIT%) do (
 		exit /B !ERRORLEVEL!
 	)
 
-	rem echo Indexing !SEGMENT! on SOLR index -^> %SOLRURL%
-	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-	rem %bin%nutch index "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
-
-	echo Sending !SEGMENT! to EUCases web service -^> %SOLRURL%
+	echo Indexing !SEGMENT! on SOLR index -^> %SOLRURL%
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-	call %bin%nutch index "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
+	call %bin%nutch index "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
 
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
 		exit /B !ERRORLEVEL!
 	)
 
-	rem echo Cleanup on SOLR index -^> %SOLRURL%
-	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-	rem call %bin%nutch clean "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb"
-
-	echo Cleanup on EUCases web service -^> %SOLRURL%
+	echo Cleanup on SOLR index -^> %SOLRURL%
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
-	call %bin%nutch clean "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb"
+	call %bin%nutch clean "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb"
 
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
