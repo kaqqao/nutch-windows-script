@@ -14,11 +14,11 @@ rem distributed under the License is distributed on an "AS IS" BASIS,
 rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 rem See the License for the specific language governing permissions and
 rem limitations under the License.
-rem 
+rem
 rem The Crawl command script : crawl <seedDir> <crawlDir> <solrURL> <numberOfRounds>
 rem
-rem 
-rem UNLIKE THE NUTCH ALL-IN-ONE-CRAWL COMMAND THIS SCRIPT DOES THE LINK INVERSION AND 
+rem
+rem UNLIKE THE NUTCH ALL-IN-ONE-CRAWL COMMAND THIS SCRIPT DOES THE LINK INVERSION AND
 rem INDEXING FOR EACH SEGMENT
 
 setlocal
@@ -29,24 +29,24 @@ set LIMIT=%4
 
 set NUTCH_OPTS_ENV=%NUTCH_OPTS%
 
-if "%SEEDDIR%" == "" ( 
-    echo Missing seedDir : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
-    exit /B 1;
+if "%SEEDDIR%" == "" (
+	echo Missing seedDir : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
+	exit /B 1;
 )
 
 if "%CRAWL_PATH%" == "" (
-    echo Missing crawlDir : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
-    exit /B 1;
+	echo Missing crawlDir : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
+	exit /B 1;
 )
 
 if "%SOLRURL%" == "" (
-    echo Missing SOLRURL : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
-    exit /B 1;
+	echo Missing SOLRURL : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
+	exit /B 1;
 )
 
 if "%LIMIT%" == "" (
-    echo Missing numberOfRounds : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
-    exit /B 1;
+	echo Missing numberOfRounds : crawl ^<seedDir^> ^<crawlDir^> ^<solrURL^> ^<numberOfRounds^>
+	exit /B 1;
 )
 
 rem #############################################
@@ -84,11 +84,11 @@ for %%i in ("%NUTCH_HOME%\*nutch*.job") do set NUTCH_JOB=%%i
 
 SET BIN=%~dp0
 
-rem note that some of the options listed here could be set in the 
-rem corresponding hadoop site xml param file 
+rem note that some of the options listed here could be set in the
+rem corresponding hadoop site xml param file
 SET commonOptions=-Dmapred.reduce.tasks=%numTasks% -Dmapred.child.java.opts=-Xmx1000m -Dmapred.reduce.tasks.speculative.execution=false -Dmapred.map.tasks.speculative.execution=false -Dmapred.compress.map.output=true
 
-rem check that hadoop can be found on the path 
+rem check that hadoop can be found on the path
 if defined NUTCH_JOB (
 	rem Set errorlevel here because of variable expansion happens before block execution
 	WHERE hadoop.cmd >nul 2>&1
@@ -121,7 +121,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	echo Generating a new segment
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions%
 	call %bin%nutch.bat generate "%CRAWL_PATH%/crawldb" "%CRAWL_PATH%/segments" -topN %sizeFetchlist% -numFetchers %numSlaves% -noFilter
-  
+
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
 		exit /B !ERRORLEVEL!
@@ -131,7 +131,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	rem call hadoop in distributed mode
 	rem or use ls
 
-	
+
 	SET SEGMENT=
 
 	if not defined NUTCH_JOB (
@@ -153,7 +153,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 			)
 		)
 	)
-	
+
 	echo Operating on segment : !SEGMENT!
 
 	rem fetching the segment
@@ -168,7 +168,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 
 	rem parsing the segment
 	echo Parsing : !SEGMENT!
-	rem enable the skipping of records for the parsing so that a dodgy document 
+	rem enable the skipping of records for the parsing so that a dodgy document
 	rem so that it does not fail the full task
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV% %commonOptions% -Dmapred.skip.attempts.to.start.skipping=2 -Dmapred.skip.map.max.skip.records=1
 	call %bin%nutch parse "%CRAWL_PATH%/segments/!SEGMENT!"
@@ -188,7 +188,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 		exit /B !ERRORLEVEL!
 	)
 
-	rem note that the link inversion - indexing routine can be done within the main loop 
+	rem note that the link inversion - indexing routine can be done within the main loop
 	rem on a per segment basis
 	echo Link inversion
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
@@ -202,7 +202,7 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	echo Dedup on crawldb
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch dedup "%CRAWL_PATH%/crawldb"
-  
+
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
 		exit /B !ERRORLEVEL!
@@ -211,11 +211,11 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	rem echo Indexing !SEGMENT! on SOLR index -^> %SOLRURL%
 	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	rem %bin%nutch index "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
-	
+
 	echo Sending !SEGMENT! to EUCases web service -^> %SOLRURL%
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch index "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb" -linkdb "%CRAWL_PATH%/linkdb" "%CRAWL_PATH%/segments/!SEGMENT!"
-  
+
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
 		exit /B !ERRORLEVEL!
@@ -224,11 +224,11 @@ for /L %%i IN (1,1,%LIMIT%) do (
 	rem echo Cleanup on SOLR index -^> %SOLRURL%
 	rem SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	rem call %bin%nutch clean "-Dsolr.server.url=%SOLRURL%" "%CRAWL_PATH%/crawldb"
-	
+
 	echo Cleanup on EUCases web service -^> %SOLRURL%
 	SET NUTCH_OPTS=%NUTCH_OPTS_ENV%
 	call %bin%nutch clean "-Deucasesindexer.serviceUrl=%SOLRURL%" "%CRAWL_PATH%/crawldb"
-  
+
 	if !ERRORLEVEL! NEQ 0 (
 		echo Errorlevel from previous command is !ERRORLEVEL! - crawling stopped.
 		exit /B !ERRORLEVEL!
