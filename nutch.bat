@@ -81,9 +81,6 @@ echo Using Nutch opts: %NUTCH_OPTS%
 rem Add everything from lib to classpath
 set CLASSPATH=%CLASSPATH%;"%NUTCH_HOME%\lib\*"
 
-rem Add hadoop utils for outlinkmeta plugin for the reduce step
-set CLASSPATH=%CLASSPATH%;
-
 rem Determine the Java class to trigger
 if "%1" == "crawl" (
     echo Command %1 is deprecated, please use bin/crawl instead
